@@ -19,7 +19,7 @@
     \author Simon Gog
 */
 #ifndef INCLUDED_SDSL_INT_VECTOR
-#define INCLUDED_SDSL_INT_VECTOR
+ #define INCLUDED_SDSL_INT_VECTOR
 
 #include "bits.hpp"
 #include "structure_tree.hpp"

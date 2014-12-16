@@ -83,7 +83,6 @@ class bp_support_sada
         typedef t_select                    select_type;
     private:
         static_assert(0 < t_sml_blk, "bp_support_sada: t_sml_blk should be greater than 0!");
-        const bit_vector* m_bp        = nullptr;   // the supported balanced parentheses sequence as bit_vector
         rank_type         m_bp_rank;   // RS for the BP sequence => see excess() and rank()
         select_type       m_bp_select; // SS for the BP sequence => see select()
 
@@ -201,6 +200,11 @@ class bp_support_sada
          *            \f$ excess(j) = excess(i)+rel \f$, \f$j\f$ is returned
          *                otherwise size().
          */
+
+
+//        bool operator[](size_type i) const {
+//            return access(i);
+//        }
         size_type fwd_excess(size_type i, difference_type rel)const {
             size_type j;
             // (1) search the small block for the answer
@@ -336,6 +340,8 @@ class bp_support_sada
         }
 
     public:
+
+        const bit_vector*           m_bp               = nullptr;   // the supported balanced parentheses sequence as bit_vector
         const rank_type&            bp_rank           = m_bp_rank;           //!< RS for the underlying BP sequence.
         const select_type&          bp_select         = m_bp_select;         //!< SS for the underlying BP sequence.
         const sml_block_array_type& sml_block_min_max = m_sml_block_min_max; //!< Small blocks array. Rel. min/max for the small blocks.
@@ -492,6 +498,11 @@ class bp_support_sada
          * \pre{ \f$1\leq i < rank(size())\f$ }
          * \post{ \f$ 0\leq select(i) < size() \f$ }
          */
+        bool access(size_type i) const {
+            assert(i < m_size);
+            return ((*m_bp)[i]);
+        }
+
         size_type select(size_type i)const {
 #ifdef USE_CACHE
             size_type a = 0;

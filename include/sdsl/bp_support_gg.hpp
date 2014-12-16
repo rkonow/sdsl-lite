@@ -77,7 +77,6 @@ class bp_support_gg
         typedef t_select              select_type;
         typedef bp_support_gg<nnd_type, rank_type, select_support_scan<>, t_bs> bp_support_type;
     private:
-        const bit_vector* m_bp;         // balanced parentheses sequence
         rank_type         m_rank_bp;    // rank support for m_bp => see excess() and rank()
         select_type       m_select_bp;  // select support for m_bp => see select()
 
@@ -118,6 +117,7 @@ class bp_support_gg
 
     public:
 
+        const bit_vector* m_bp;         // balanced parentheses sequence
         const rank_type& bp_rank;
         const select_type& bp_select;
 
