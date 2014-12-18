@@ -19,8 +19,8 @@
      parentheses support structure proposed by Kunihiko Sadakane.
     \author Simon Gog
 */
-#ifndef INCLUDED_SDSL_BP_SUPPORT_SADA
-#define INCLUDED_SDSL_BP_SUPPORT_SADA
+//#ifndef INCLUDED_SDSL_BP_SUPPORT_SADA
+//#define INCLUDED_SDSL_BP_SUPPORT_SADA
 
 #include "int_vector.hpp"
 #include "rank_support.hpp"
@@ -341,7 +341,7 @@ class bp_support_sada
 
     public:
 
-        const bit_vector*           m_bp               = nullptr;   // the supported balanced parentheses sequence as bit_vector
+        const bit_vector*           m_bp              = nullptr;   // the supported balanced parentheses sequence as bit_vector
         const rank_type&            bp_rank           = m_bp_rank;           //!< RS for the underlying BP sequence.
         const select_type&          bp_select         = m_bp_select;         //!< SS for the underlying BP sequence.
         const sml_block_array_type& sml_block_min_max = m_sml_block_min_max; //!< Small blocks array. Rel. min/max for the small blocks.
@@ -493,16 +493,17 @@ class bp_support_sada
             return m_bp_rank(i+1);
         }
 
-        /*! Returns the index of the i-th opening parenthesis.
-         * \param i Number of the parenthesis to select.
-         * \pre{ \f$1\leq i < rank(size())\f$ }
-         * \post{ \f$ 0\leq select(i) < size() \f$ }
-         */
+
         bool access(size_type i) const {
             assert(i < m_size);
             return ((*m_bp)[i]);
         }
 
+        /*! Returns the index of the i-th opening parenthesis.
+         * \param i Number of the parenthesis to select.
+         * \pre{ \f$1\leq i < rank(size())\f$ }
+         * \post{ \f$ 0\leq select(i) < size() \f$ }
+         */
         size_type select(size_type i)const {
 #ifdef USE_CACHE
             size_type a = 0;

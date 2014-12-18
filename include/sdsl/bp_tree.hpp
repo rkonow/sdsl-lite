@@ -25,6 +25,10 @@
 
 namespace sdsl {
 
+
+// TODO: Discarded the 'node' class as in louds, since it would require some extra-processing (pre_order_ranks...)
+// This could be added and maybe using  template we could decide if we use it or not...
+
 //template<typename bp_support_t=bp_support_sada<> >
 //class bp_node {
 //    typedef bp_support_t::size_type     size_type;
@@ -47,17 +51,15 @@ namespace sdsl {
 //};
 
 
-template<typename bp_support_t=bp_support_sada<>,
-         typename rank_support_t=rank_support_v5<0>>
+template<typename bp_support_t=bp_support_sada<>>
 class bp_tree {
 
     public:
         typedef bp_support_t             bp_support_type;
-        typedef rank_support_t           rank_support_type;
         typedef size_t                   size_type;
 
     private:
-            bp_support_type                        m_bp;
+            bp_support_type              m_bp;
 
     public:
         bp_tree(const bit_vector *bp = nullptr) {
@@ -67,7 +69,7 @@ class bp_tree {
         bp_tree(const bp_tree &lt) {
             *this = lt;
         }
-        // default?
+        // TODO: use default?
         bp_tree(bp_tree &&lt) {
             *this = std::move(lt);
         }
@@ -84,11 +86,15 @@ class bp_tree {
                 m_bp = std::move(lt.m_bp);
             }
             return *this;
+        }
 
+        // TODO: I think this is wrong...
+        void swap(bp_tree& tree) {
+            m_bp.swap(tree.m_bp);
         }
 
         size_type root() const {
-            return 0;
+            return 1;
         }
 
         size_type length() const {
@@ -99,6 +105,7 @@ class bp_tree {
             return (m_bp.size()+1)/2;
         }
 
+        // TODO: implement this
     //    size_type degree(const node_type &v) const {
     //
     //    }
@@ -110,7 +117,7 @@ class bp_tree {
                 return std::numeric_limits<size_type>::max();
             }
         }
-
+        // TODO: Had to add 'access' method in bp_support, change this and use original bitmap reference?
         size_type next_sibling(const size_type i) const {
             size_type aux = m_bp.find_close(i)+1;
             if (m_bp.access(aux) == 1)
@@ -134,6 +141,10 @@ class bp_tree {
 
         size_type close(const size_type v) const {
             return m_bp.find_close(v);
+        }
+
+        size_type enclose(const size_type v) const {
+            return m_bp.enclose(v);
         }
 
         bool isleaf(const size_type v) const {
