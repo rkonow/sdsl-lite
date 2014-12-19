@@ -65,28 +65,30 @@ int main(int argc, char** argv) {
         int_vector_buffer<> buf_y("test.y");
         int_vector_buffer<> buf_x("test.x");
         treap_grid<> tg(buf_x, buf_y, buf_w);
+        cout << "pointer nodes: ";
         cout << tg << endl;
-        cout << "traversal..." << endl;
         traverse(tg,1);
-        auto mts_it = map_to_sorted_sequence(tg, {0, 10}, {0,4});
+        auto mts_it = map_to_sorted_sequence(tg, {0, 0}, {10,4});
         while (mts_it) {
             cout << get<0>(*mts_it) << " , "  << get<1>(*mts_it)  << " , " << get<2>(*mts_it) << " , " << get<3>(*mts_it) << endl;
             ++mts_it;
         }
     }
+    {
+    treap_grid<> tg2;
+    construct_im(tg2, {{0,0,2},{1,2,3},{2,1,2},{3,0,2},{4,0,1},{5,1,4},{6,0,1},{7,1,1},{8,0,8},{9,2,5}});
+
+    auto topk_it2 = top_k(tg2, {2,0}, {7,1});
+    while (topk_it2) {
+        auto point_weight = *topk_it2;
+        cout << point_weight.first <<" weight: "<<point_weight.second << endl;
+        ++topk_it2;
+    }
+    }
 }
 
 
-//    treap_grid<> tg2;
-//    // not working, possibly due to the swap method...
-//    construct_im(tg2, {{0,0,2},{1,2,3},{2,1,2},{3,0,2},{4,0,1},{5,1,4},{6,0,1},{7,1,1},{8,0,8},{9,2,5}});
-//
-//    auto topk_it2 = top_k(tg, {2,0}, {7,1});
-//    while (topk_it2) {
-//        auto point_weight = *topk_it2;
-//        cout << point_weight.first <<" weight: "<<point_weight.second << endl;
-//        ++topk_it2;
-//    }
+
 //}
 
 

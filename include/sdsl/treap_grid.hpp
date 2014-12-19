@@ -484,28 +484,6 @@ class treap_grid {
             return min_pos;
         }
 
-//        size_type findMin(size_type start, size_type end, int_vector<>& y_vec)
-//        {
-//            size_type mid = (start+end)/2;
-//            size_type min_distance = start-end;
-//            size_type min_pos = 0;
-//            size_type min_value = std::numeric_limits<size_type>::max();
-//            for (size_type i = start ; i <= end; i++) {
-//                if (y_vec[i] < min_value) {
-//                    min_pos = i;
-//                    min_value = y_vec[i];
-//                }
-//                if (y_vec[i] == min_value) {
-//                    size_type distance = size_type_abs(i,mid);
-//                    if (distance < min_distance) {
-//                        min_distance = distance;
-//                        min_pos = i;
-//                    }
-//                }
-//            }
-//            return min_pos;
-//        }
-
         void _print_inorder(node_ptr& node, std::ostream& os) const {
             if (node != nullptr) {
                 _print_inorder(node->m_left, os);
