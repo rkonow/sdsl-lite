@@ -42,7 +42,7 @@ using std::endl;
 
 namespace sdsl
 {
-template<size_t  t_levels=0,
+template<size_t  t_levels=1,
         typename t_bp=bp_support_sada<>,
         typename t_rmq=rmq_succinct_sct<false>,
         typename t_weight_vec=dac_vector<>,
@@ -55,7 +55,7 @@ class treap_grid {
     public:
         enum { permuted_x = false};
         typedef int_vector<>::size_type         size_type;
-        typedef std::shared_ptr<treap_node>     node_ptr;
+        typedef std::unique_ptr<treap_node>     node_ptr;
         typedef std::complex<uint64_t>          point_type;
         typedef std::pair<size_type,size_type>  range_type;
 
@@ -154,12 +154,15 @@ class treap_grid {
                                                              m_left(nullptr),
                                                              m_right(nullptr)
                 { }
+//                ~treap_node() {
+//                    cout << "deleting node..." << m_x_value << endl;
+//                }
         };
 
     public:
         // start_pos, end_pos, parent_node, left(0),right(1)
         typedef std::tuple<size_type,size_type, size_type, size_type> node_data_type;
-        typedef std::tuple<size_type, size_type, node_ptr, bool>      t_state;
+        typedef std::tuple<size_type, size_type, treap_node*, bool>      t_state;
         typedef std::array<size_type,6>                               node_data;
 
         node_ptr                    m_root;
@@ -214,13 +217,13 @@ class treap_grid {
                 size_t min_pos = find_min(0, m_size - 1, wt_y);
                 m_root = node_ptr(new treap_node(min_pos, y_vec[min_pos], y_vec[min_pos]));
 
-                st.emplace(0, min_pos - 1, m_root, 0);
-                st.emplace(min_pos + 1, m_size - 1, m_root, 1);
-
+                st.emplace(0, min_pos - 1, m_root.get(), 0);
+                st.emplace(min_pos + 1, m_size - 1, m_root.get(), 1);
+                treap_node* node;
                 while (!st.empty()) {
                     t_state values = st.top();
                     st.pop();
-                    node_ptr node = std::get<2>(values);
+                    node = std::get<2>(values);
                     size_type start = std::get<0>(values);
                     size_type end = std::get<1>(values);
                     bool left = std::get<3>(values);
@@ -238,43 +241,44 @@ class treap_grid {
                     else
                         min_pos = find_min(start, end, wt_y, node->m_y_dest_value);
 
+                    if (node == nullptr) {
+                        cout << "range fucked up= " << start  << " , " << end << endl;
+                    }
                     node_ptr new_node = node_ptr(new treap_node(min_pos, y_vec[min_pos]-node->m_y_dest_value, y_vec[min_pos]));
 
                     if (left == 0) {
-                        node->m_left = new_node;
-                        node = node->m_left;
+                        node->m_left = std::move(new_node);
+                        node = node->m_left.get();
                     } else {
-                        node->m_right = new_node;
-                        node = node->m_right;
+                        node->m_right = std::move(new_node);
+                        node = node->m_right.get();
                     }
+                    st.emplace(start, min_pos - 1, node, 0);
+                    st.emplace(min_pos + 1, end, node, 1);
 
-
-                    st.emplace(start, min_pos - 1, new_node, 0);
-                    st.emplace(min_pos + 1, end, new_node, 1);
                 }
             }
             // (2) traverse the trep with pointer in pre-order and save the y-dest values and weights
+
             {
+                std::stack<treap_node*> st;
                 int_vector<> weights;
                 load_from_file(weights, buf_w.filename());
 
                 int_vector_buffer<> permuted_weights(temp_grid_w_filename, std::ios::out);
                 int_vector_buffer<> permuted_y(temp_grid_y_filename, std::ios::out);
-                std::stack<node_ptr> st;
 
-                st.push(m_root);
+                st.push(m_root.get());
                 while(!st.empty()) {
-                    node_ptr tmp = st.top();
+                    treap_node* tmp = st.top();
                     permuted_weights.push_back(weights[tmp->m_x_value]);
                     permuted_y.push_back(tmp->m_y_value);
                     st.pop();
                     if (tmp->m_right != nullptr)
-                        st.push(tmp->m_right);
+                        st.push(tmp->m_right.get());
                     if (tmp->m_left != nullptr)
-                        st.push(tmp->m_left);
+                        st.push(tmp->m_left.get());
                 }
-                permuted_y.close(false);
-                permuted_weights.close(false);
             }
             // (3) load the weights and y-dest values into the class.
             {
@@ -288,21 +292,39 @@ class treap_grid {
                 m_y_values = t_y_vec(y_values);
 
             }
-            // (4) we convert the treap into a balanced parenthesis representation and then delete the pointer version
+            // (4) we convert the treap into a balanced parenthesis representation and
             // we also keep track of the root values for traversal
             {
                 bit_vector bv = bit_vector(2*(m_size+1), 0);
                 size_type count = 0;
-                _convert_bp(m_root, bv, count);
+                _convert_bp(m_root.get(), bv, count);
                 m_tree = bp_tree<t_bp>(bv);
-
-                _delete_pointers(m_root);
-
                 m_root_data = get_data(1, m_y_values[0]);
+            }
+            // (5) delete all pointers up to level x.
+            {
+                typedef std::pair<treap_node*,size_type> t_traverse;
+                std::queue<t_traverse> traverse;
+                size_type level = 0;
+                traverse.push({m_root.get(),level});
+                while (!traverse.empty()) {
+                    t_traverse data = traverse.front();
+                    treap_node* node =std::get<0>(data);
+                    size_type lev = std::get<1>(data);
+                    traverse.pop();
+                    if (lev >= t_levels) {
+                        node_ptr p = node_ptr(node);
+                        _delete_pointers(std::move(p));
+                    } else {
+                        if (node->m_left != nullptr)
+                            traverse.push({node->m_left.get(), lev + 1});
+                        if (node->m_right != nullptr)
+                            traverse.push({node->m_right.get(), lev + 1});
+                    }
+                }
             }
             sdsl::remove(temp_grid_w_filename);
             sdsl::remove(temp_grid_y_filename);
-
         }
 
         bp_tree<t_bp> getTree() {
@@ -368,7 +390,7 @@ class treap_grid {
 
         void print_preorder(std::ostream& os)  {
             if (m_root != nullptr) {
-                _print_preorder(m_root,os);
+                _print_preorder(std::move(m_root),os);
             }
         }
 
@@ -410,20 +432,20 @@ class treap_grid {
         }
 
     private:
-        void _delete_pointers(node_ptr node) {
+        void _delete_pointers(node_ptr&& node) {
             if (node != nullptr) {
-                _delete_pointers(node->m_left);
-                _delete_pointers(node->m_right);
-                node.reset();
+                _delete_pointers(std::move(node->m_left));
+                _delete_pointers(std::move(node->m_right));
+                node.release();
             }
         }
 
-        void _convert_bp(node_ptr node, bit_vector& bitmap, size_type& count) {
+        void _convert_bp(treap_node* node, bit_vector& bitmap, size_type& count) {
             bitmap[count++] = true;
 
             while(node != nullptr) {
-                _convert_bp(node->m_left, bitmap,count);
-                node = node->m_right;
+                _convert_bp(node->m_left.get(), bitmap,count);
+                node = node->m_right.get();
             }
             bitmap[count++] = false;
         }
@@ -492,11 +514,11 @@ class treap_grid {
             }
         }
 
-        void _print_preorder(node_ptr& node, std::ostream& os) const {
+        void _print_preorder(node_ptr node, std::ostream& os) const {
             if (node != nullptr) {
                 os << "(" << node->m_x_value << "," << node->m_y_value << ") ";
-                _print_preorder(node->m_left, os);
-                _print_preorder(node->m_right, os);
+                _print_preorder(std::move(node->m_left), os);
+                _print_preorder(std::move(node->m_right), os);
             }
         }
 

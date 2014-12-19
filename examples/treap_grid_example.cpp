@@ -45,34 +45,37 @@ void traverse(treap_grid<>& tg, size_t node) {
 
 int main(int argc, char** argv) {
 
-    bit_vector bp(16,0);
+    {
+        int_vector<> x = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        int_vector<> y = {0, 0, 0, 1, 2, 3, 4, 0, 0, 0, 1};
+        int_vector<> w = {1, 1, 1, 1, 1, 1, 1, 10, 1, 1, 9};
 
-    int_vector<> x = {0,1,2,3,4,5,6,7,8,9,10};
-    int_vector<> y = {0,0,0,1,2,3,4,0,0,0,1};
-    int_vector<> w = {1,1,1,1,1,1,1,10,1,1,9};
+        int_vector_buffer<> buf_w("test.w", std::ios::out);
+        int_vector_buffer<> buf_y("test.y", std::ios::out);
+        int_vector_buffer<> buf_x("test.x", std::ios::out);
 
-    int_vector_buffer<> buf_w("test.w", std::ios::out);
-    int_vector_buffer<> buf_y("test.y", std::ios::out);
-    int_vector_buffer<> buf_x("test.x", std::ios::out);
-
-    for (size_t i = 0 ; i < x.size(); i++) {
-        buf_w.push_back(w[i]);
-        buf_y.push_back(y[i]);
-        buf_x.push_back(x[i]);
+        for (size_t i = 0; i < x.size(); i++) {
+            buf_w.push_back(w[i]);
+            buf_y.push_back(y[i]);
+            buf_x.push_back(x[i]);
+        }
     }
-    buf_w.close(false);
-    buf_y.close(false);
-    buf_x.close(false);
-
-    treap_grid<> tg(buf_x,buf_y,buf_w);
-    cout << tg << endl;
-    cout << "traversal..." << endl;
-    traverse(tg,1);
-    auto mts_it = map_to_sorted_sequence(tg, {0, 10}, {0,4});
-    while (mts_it) {
-        cout << get<0>(*mts_it) << " , "  << get<1>(*mts_it)  << " , " << get<2>(*mts_it) << " , " << get<3>(*mts_it) << endl;
-        ++mts_it;
+    {
+        int_vector_buffer<> buf_w("test.w");
+        int_vector_buffer<> buf_y("test.y");
+        int_vector_buffer<> buf_x("test.x");
+        treap_grid<> tg(buf_x, buf_y, buf_w);
+        cout << tg << endl;
+        cout << "traversal..." << endl;
+        traverse(tg,1);
+        auto mts_it = map_to_sorted_sequence(tg, {0, 10}, {0,4});
+        while (mts_it) {
+            cout << get<0>(*mts_it) << " , "  << get<1>(*mts_it)  << " , " << get<2>(*mts_it) << " , " << get<3>(*mts_it) << endl;
+            ++mts_it;
+        }
     }
+}
+
 
 //    treap_grid<> tg2;
 //    // not working, possibly due to the swap method...
@@ -84,6 +87,6 @@ int main(int argc, char** argv) {
 //        cout << point_weight.first <<" weight: "<<point_weight.second << endl;
 //        ++topk_it2;
 //    }
-}
+//}
 
 
