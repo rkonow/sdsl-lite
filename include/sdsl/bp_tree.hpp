@@ -18,9 +18,9 @@
     \brief bp_tree.hpp contains an implementation of a balanced parentheses tree.
     \author Simon Gog, Roberto Konow
 */
-//#ifndef INCLUDED_SDSL_BP_TREE
-//#define INCLUDED_SDSL_BP_TREE
-#pragma once
+#ifndef INCLUDED_SDSL_BP_TREE
+#define INCLUDED_SDSL_BP_TREE
+//#pragma once
 #include "bp_support.hpp"
 
 namespace sdsl {
@@ -51,46 +51,58 @@ namespace sdsl {
 //};
 
 
-template<typename bp_support_t=bp_support_sada<>>
+template<typename t_bp_support=bp_support_sada<>,
+        typename t_bit_vec = bit_vector>
 class bp_tree {
 
     public:
-        typedef bp_support_t             bp_support_type;
-        typedef size_t                   size_type;
+        typedef bit_vector::size_type    size_type;
+        typedef t_bp_support             bp_support_type;
+        typedef t_bit_vec                bit_vector_type;
 
     private:
             bp_support_type              m_bp;
+            bit_vector_type              m_bv;
+    public:
+        const bit_vector_type&           bv;
 
     public:
-        bp_tree(const bit_vector *bp = nullptr) {
-            m_bp = bp_support_type(bp);
+
+        bp_tree() : m_bp(), m_bv(), bv(m_bv) { }
+
+        bp_tree(const bit_vector_type& bp) : m_bp(), bv(m_bv) {
+            m_bv = bit_vector_type(std::move(bp));
+            util::init_support(m_bp, &m_bv);
         }
 
-        bp_tree(const bp_tree &lt) {
+        bp_tree(const bp_tree &lt) : bv(m_bv) {
             *this = lt;
         }
-        // TODO: use default?
-        bp_tree(bp_tree &&lt) {
+
+        bp_tree(bp_tree &&lt) : bv(m_bv) {
             *this = std::move(lt);
         }
 
-        bp_tree &operator=(const bp_tree &lt) {
+        bp_tree &operator=(const bp_tree& lt)  {
             if (this != &lt) {
                 m_bp = lt.m_bp;
+                m_bv = lt.m_bv;
             }
             return *this;
         }
 
         bp_tree operator=(bp_tree &&lt) {
             if (this != &lt) {
+                m_bv = std::move(lt.m_bv);
                 m_bp = std::move(lt.m_bp);
+                m_bp.set_vector(&m_bv);
             }
             return *this;
         }
 
-        // TODO: I think this is wrong...
         void swap(bp_tree& tree) {
-            m_bp.swap(tree.m_bp);
+            m_bv.swap(tree.m_bv);
+            util::swap_support(m_bp, tree.m_bp, &m_bv, &(tree.m_bv));
         }
 
         size_type root() const {
@@ -98,7 +110,7 @@ class bp_tree {
         }
 
         size_type length() const {
-            return m_bp.size();
+            return m_bv.size();
         }
 
         size_type nodes() const {
@@ -117,10 +129,10 @@ class bp_tree {
                 return std::numeric_limits<size_type>::max();
             }
         }
-        // TODO: Had to add 'access' method in bp_support, change this and use original bitmap reference?
+
         size_type next_sibling(const size_type i) const {
             size_type aux = m_bp.find_close(i)+1;
-            if (m_bp.access(aux) == 1)
+            if (m_bv[aux] == 1)
                 return aux;
             else
                 return std::numeric_limits<size_type>::max();
@@ -129,7 +141,6 @@ class bp_tree {
         size_type parent(const size_type v) const {
             return m_bp.enclose(v);
         }
-
 
         size_type preorder_select(const size_type v) const {
             return m_bp.select(v);
@@ -148,7 +159,7 @@ class bp_tree {
         }
 
         bool isleaf(const size_type v) const {
-            return m_bp.access(v + 1) == 0;
+            return m_bv[v + 1] == 0;
         }
 
         size_type subtree_size(const size_type v) const {
@@ -158,15 +169,18 @@ class bp_tree {
         size_type serialize(std::ostream &out, structure_tree_node *v = nullptr, std::string name = "") const {
             structure_tree_node *child = structure_tree::add_child(v, name, util::class_name(*this));
             size_type written_bytes = 0;
-            m_bp.serialize(out, child, "bp_tree");
+            m_bv.serialize(out, child, "bit_vector");
+            m_bp.serialize(out,child, "bp_support");
             structure_tree::add_size(child, written_bytes);
             return written_bytes;
         }
 
         void load(std::istream &in) {
+            m_bv.load(in);
             m_bp.load(in);
+            m_bp.set_vector(&m_bv);
         }
     };
 }
 
-//#endif
+#endif

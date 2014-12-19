@@ -169,7 +169,6 @@ class treap_grid {
         t_y_vec                     m_y_values;
         size_type                   m_size;
         size_type                   m_levels = 0;
-        bit_vector                  m_bp;
         node_data_type              m_root_data; // fix this for serialize
 
         treap_grid() = default;
@@ -188,15 +187,12 @@ class treap_grid {
         void swap(treap_grid& tr)
         {
             if (this != &tr) {
-                m_bp.swap(tr.m_bp);
                 m_rmq.swap(tr.m_rmq);
                 m_weights.swap(tr.m_weights);
                 m_y_values.swap(tr.m_y_values);
                 m_tree.swap(tr.m_tree);
                 tr.m_root_data = m_root_data;
                 tr.m_size = m_size;
-                // TODO: fix this swap thing...
-//                tr.m_tree = bp_tree<t_bp>(m_bp);
             }
         }
 
@@ -303,13 +299,15 @@ class treap_grid {
 
         }
 
+        bp_tree<t_bp> getTree() {
+            return m_tree;
+        }
          range_type get_range(size_type node, size_type pos) const {
             size_t left = pos;
             size_t rank_param = m_tree.close(m_tree.enclose(node));
             size_t right = m_tree.preorder_rank(rank_param)-2;
             return {left,right};
         }
-
 
         range_type get_weight_data(size_type node, size_type pos) const {
             range_type rng = get_range(node, pos);
@@ -352,12 +350,12 @@ class treap_grid {
             // TODO: change vector<bool> to something of sdsl
             std::vector<bool> bp;
             _convert_bp(m_root, bp);
-            m_bp = bit_vector(bp.size(), 0);
+            bit_vector bv = bit_vector(bp.size(), 0);
             // TODO: efficient way to do this?
             for (size_type i = 0; i < bp.size(); i++) {
-                m_bp[i] = bp[i];
+                bv[i] = bp[i];
             }
-            m_tree = bp_tree<t_bp>(&m_bp);
+            m_tree = bp_tree<t_bp>(bv);
         }
 
         void delete_pointers() {
@@ -444,6 +442,7 @@ class treap_grid {
 
         // TODO: this is probably super-inefficient
         // Change this to RMQ with sub-intervals...
+        // Wavelet tree based solution, rank and select.
         size_type findMin(size_type start, size_type end, int_vector<>& y_vec)
         {
             size_type mid = (start+end)/2;

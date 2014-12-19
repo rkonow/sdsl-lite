@@ -19,8 +19,8 @@
      parentheses support structure proposed by Kunihiko Sadakane.
     \author Simon Gog
 */
-//#ifndef INCLUDED_SDSL_BP_SUPPORT_SADA
-//#define INCLUDED_SDSL_BP_SUPPORT_SADA
+#ifndef INCLUDED_SDSL_BP_SUPPORT_SADA
+#define INCLUDED_SDSL_BP_SUPPORT_SADA
 
 #include "int_vector.hpp"
 #include "rank_support.hpp"

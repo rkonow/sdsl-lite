@@ -1,11 +1,6 @@
 #include "sdsl/bp_tree.hpp"
 #include "sdsl/treap_grid.hpp"
-#include "../include/sdsl/treap_grid.hpp"
-#include "../include/sdsl/treap_grid_algorithm.hpp"
-
-//#include "sdsl/bit_vector.hpp"
-//#include "../include/sdsl/bp_tree.hpp"
-
+#include "sdsl/treap_grid_algorithm.hpp"
 using namespace sdsl;
 using namespace std;
 
