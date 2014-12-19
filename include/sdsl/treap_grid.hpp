@@ -289,10 +289,14 @@ class treap_grid {
             // (4) we convert the treap into a balanced parenthesis representation and then delete the pointer version
             // we also keep track of the root values for traversal
             {
-                convert_bp();
-                delete_pointers();
-                m_root_data = get_data(1, m_y_values[0]);
+                bit_vector bv = bit_vector(2*(m_size+1), 0);
+                size_type count = 0;
+                _convert_bp(m_root, bv, count);
+                m_tree = bp_tree<t_bp>(bv);
 
+                _delete_pointers(m_root);
+
+                m_root_data = get_data(1, m_y_values[0]);
             }
             sdsl::remove(temp_grid_w_filename);
             sdsl::remove(temp_grid_y_filename);
@@ -342,25 +346,6 @@ class treap_grid {
             } else {
                 size_type max = std::numeric_limits<size_t>::max();
                 return {max,max,max};
-            }
-        }
-
-
-    void convert_bp() {
-            // TODO: change vector<bool> to something of sdsl
-            std::vector<bool> bp;
-            _convert_bp(m_root, bp);
-            bit_vector bv = bit_vector(bp.size(), 0);
-            // TODO: efficient way to do this?
-            for (size_type i = 0; i < bp.size(); i++) {
-                bv[i] = bp[i];
-            }
-            m_tree = bp_tree<t_bp>(bv);
-        }
-
-        void delete_pointers() {
-            if (m_root != nullptr) {
-                _delete_pointers(m_root);
             }
         }
 
@@ -431,13 +416,14 @@ class treap_grid {
             }
         }
 
-        void _convert_bp(node_ptr node, std::vector<bool>& bitmap) {
-            bitmap.push_back(true);
+        void _convert_bp(node_ptr node, bit_vector& bitmap, size_type& count) {
+            bitmap[count++] = true;
+
             while(node != nullptr) {
-                _convert_bp(node->m_left, bitmap);
+                _convert_bp(node->m_left, bitmap,count);
                 node = node->m_right;
             }
-            bitmap.push_back(false);
+            bitmap[count++] = false;
         }
 
         // TODO: this is probably super-inefficient
