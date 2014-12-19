@@ -211,7 +211,7 @@ class treap_grid {
                 load_from_file(y_vec, buf_y.filename());
                 wt_int<> wt_y = wt_int<>(buf_y, buf_y.size());
                 m_size = y_vec.size();
-                size_t min_pos = findMin(0, m_size - 1, wt_y);
+                size_t min_pos = find_min(0, m_size - 1, wt_y);
                 m_root = node_ptr(new treap_node(min_pos, y_vec[min_pos], y_vec[min_pos]));
 
                 st.emplace(0, min_pos - 1, m_root, 0);
@@ -236,7 +236,7 @@ class treap_grid {
                     if (start == end)
                         min_pos = start;
                     else
-                        min_pos = findMin(start, end, wt_y, node->m_y_dest_value);
+                        min_pos = find_min(start, end, wt_y, node->m_y_dest_value);
 
                     node_ptr new_node = node_ptr(new treap_node(min_pos, y_vec[min_pos]-node->m_y_dest_value, y_vec[min_pos]));
 
@@ -428,7 +428,7 @@ class treap_grid {
             bitmap[count++] = false;
         }
 
-        size_type findMin(size_type start, size_type end, wt_int<>& wt_y, size_t symbol = 0)
+        size_type find_min(size_type start, size_type end, wt_int<>& wt_y, size_t symbol = 0)
         {
             size_t mid_range = (start+end)/2;
             size_t distance = 0;

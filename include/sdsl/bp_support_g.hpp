@@ -76,6 +76,7 @@ class bp_support_g
         typedef t_select              select_type;
         typedef t_rmq                 rmq_type;
     private:
+        const bit_vector* m_bp;             // the supported BP sequence as bit_vector
         rank_type         m_rank_bp;        // rank support for the BP sequence => see excess() and rank()
         select_type       m_select_bp;      // select support for the BP sequence => see select()
 
@@ -123,8 +124,7 @@ class bp_support_g
     public:
         const rank_type&   bp_rank   = m_rank_bp;
         const select_type& bp_select = m_select_bp;
-        // RK: changing bit_vector to public
-        const bit_vector* m_bp;             // the supported BP sequence as bit_vector
+
 
 
     //! Constructor
