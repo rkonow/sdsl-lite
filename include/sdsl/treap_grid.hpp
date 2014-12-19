@@ -27,8 +27,8 @@
 #include "sdsl/int_vector.hpp"
 #include "sdsl/int_vector_buffer.hpp"
 #include "sdsl/bp_tree.hpp"
-#include "bp_tree.hpp"
-//#include "sdsl/wt_algorithm.hpp"
+#include "sdsl/wavelet_trees.hpp"
+#include "sdsl/wt_algorithm.hpp"
 
 #include <iostream>
 #include <memory>
@@ -158,9 +158,9 @@ class treap_grid {
 
     public:
         // start_pos, end_pos, parent_node, left(0),right(1)
-        typedef std::tuple<size_type, size_type, node_ptr, bool>  t_state;
-        typedef std::array<size_type,6> node_data;
         typedef std::tuple<size_type,size_type, size_type, size_type> node_data_type;
+        typedef std::tuple<size_type, size_type, node_ptr, bool>      t_state;
+        typedef std::array<size_type,6>                               node_data;
 
         node_ptr                    m_root;
         bp_tree<t_bp>               m_tree;
@@ -181,8 +181,6 @@ class treap_grid {
         {
             return m_size;
         }
-
-
 
         void swap(treap_grid& tr)
         {
@@ -211,9 +209,11 @@ class treap_grid {
                 std::stack<t_state> st;
                 int_vector<> y_vec;
                 load_from_file(y_vec, buf_y.filename());
+                wt_int<> wt_y = wt_int<>(buf_y, buf_y.size());
                 m_size = y_vec.size();
-                size_t min_pos = findMin(0, m_size - 1, y_vec);
+                size_t min_pos = findMin(0, m_size - 1, wt_y);
                 m_root = node_ptr(new treap_node(min_pos, y_vec[min_pos], y_vec[min_pos]));
+
                 st.emplace(0, min_pos - 1, m_root, 0);
                 st.emplace(min_pos + 1, m_size - 1, m_root, 1);
 
@@ -224,7 +224,6 @@ class treap_grid {
                     size_type start = std::get<0>(values);
                     size_type end = std::get<1>(values);
                     bool left = std::get<3>(values);
-                    // TODO: clean up these IFs...
                     if (start > end)
                         continue;
 
@@ -237,7 +236,8 @@ class treap_grid {
                     if (start == end)
                         min_pos = start;
                     else
-                        min_pos = findMin(start, end, y_vec);
+                        min_pos = findMin(start, end, wt_y, node->m_y_dest_value);
+
                     node_ptr new_node = node_ptr(new treap_node(min_pos, y_vec[min_pos]-node->m_y_dest_value, y_vec[min_pos]));
 
                     if (left == 0) {
@@ -247,6 +247,8 @@ class treap_grid {
                         node->m_right = new_node;
                         node = node->m_right;
                     }
+
+
                     st.emplace(start, min_pos - 1, new_node, 0);
                     st.emplace(min_pos + 1, end, new_node, 1);
                 }
@@ -426,30 +428,61 @@ class treap_grid {
             bitmap[count++] = false;
         }
 
-        // TODO: this is probably super-inefficient
-        // Change this to RMQ with sub-intervals...
-        // Wavelet tree based solution, rank and select.
-        size_type findMin(size_type start, size_type end, int_vector<>& y_vec)
+        size_type findMin(size_type start, size_type end, wt_int<>& wt_y, size_t symbol = 0)
         {
-            size_type mid = (start+end)/2;
-            size_type min_distance = start-end;
-            size_type min_pos = 0;
-            size_type min_value = std::numeric_limits<size_type>::max();
-            for (size_type i = start ; i <= end; i++) {
-                if (y_vec[i] < min_value) {
-                    min_pos = i;
-                    min_value = y_vec[i];
+            size_t mid_range = (start+end)/2;
+            size_t distance = 0;
+            size_t min_distance = start-end;
+            size_t min_pos = 0;
+            size_t pos = 0;
+
+            while(symbol < wt_y.sigma) {
+                size_t left_rank = wt_y.rank(start, symbol);
+                size_t right_rank = wt_y.rank(end, symbol);
+                size_t sym_count = right_rank - left_rank;
+                if (sym_count == 0) {
+                    symbol++;
+                    continue;
                 }
-                if (y_vec[i] == min_value) {
-                    size_type distance = size_type_abs(i,mid);
+                size_t select_start = left_rank+1;
+                // TODO: change this to binary search over all occ's of the symbol?
+                while (select_start != right_rank+1) {
+                    pos = wt_y.select(select_start, symbol);
+                    distance = size_type_abs(pos, mid_range);
+                    if (distance > min_distance)
+                        break;
                     if (distance < min_distance) {
                         min_distance = distance;
-                        min_pos = i;
+                        min_pos = pos;
                     }
+                    select_start++;
                 }
+                break;
             }
             return min_pos;
         }
+
+//        size_type findMin(size_type start, size_type end, int_vector<>& y_vec)
+//        {
+//            size_type mid = (start+end)/2;
+//            size_type min_distance = start-end;
+//            size_type min_pos = 0;
+//            size_type min_value = std::numeric_limits<size_type>::max();
+//            for (size_type i = start ; i <= end; i++) {
+//                if (y_vec[i] < min_value) {
+//                    min_pos = i;
+//                    min_value = y_vec[i];
+//                }
+//                if (y_vec[i] == min_value) {
+//                    size_type distance = size_type_abs(i,mid);
+//                    if (distance < min_distance) {
+//                        min_distance = distance;
+//                        min_pos = i;
+//                    }
+//                }
+//            }
+//            return min_pos;
+//        }
 
         void _print_inorder(node_ptr& node, std::ostream& os) const {
             if (node != nullptr) {
