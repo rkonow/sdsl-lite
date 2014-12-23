@@ -88,8 +88,8 @@ class treap_grid {
                         while (iv_it) {
                             auto x = std::get<0>(*iv_it);
                             auto y = std::get<1>(*iv_it);
-                            auto w = std::get<2>(*iv_it);
-                            auto max_w = std::get<3>(*iv_it);
+                            auto w = std::get<3>(*iv_it);
+                            auto max_w = std::get<2>(*iv_it);
                             m_pq.push({max_w, w, x, y});
                             ++iv_it;
                         }
@@ -216,7 +216,6 @@ class treap_grid {
                 m_size = y_vec.size();
                 size_t min_pos = find_min(0, m_size - 1, wt_y);
                 m_root = node_ptr(new treap_node(min_pos, y_vec[min_pos], y_vec[min_pos]));
-                cout << "root = " << min_pos << endl;
                 st.emplace(0, min_pos - 1, m_root.get(), 0);
                 st.emplace(min_pos + 1, m_size - 1, m_root.get(), 1);
                 treap_node* node;
@@ -241,7 +240,6 @@ class treap_grid {
                     else
                         min_pos = find_min(start, end, wt_y, node->m_y_dest_value);
 
-                    cout << "range = {" << start << "," << end << "} = " << min_pos << endl;
                     if (node == nullptr) {
                         cout << "range fucked up= " << start << " , " << end << endl;
                     }
@@ -249,11 +247,9 @@ class treap_grid {
                     node_ptr new_node = node_ptr(new treap_node(min_pos, y_vec[min_pos]-node->m_y_dest_value, y_vec[min_pos]));
 
                     if (left == 0) {
-                        cout << "setting left = { " << min_pos << "," << y_vec[min_pos] << "} from {" << node->m_x_value << "," << node->m_y_dest_value << "}" << endl;
                         node->m_left = std::move(new_node);
                         node = node->m_left.get();
                     } else {
-                        cout << "setting right = { " << min_pos << "," << y_vec[min_pos] << "} from {" << node->m_x_value << "," << node->m_y_dest_value << "}" << endl;
                         node->m_right = std::move(new_node);
                         node = node->m_right.get();
                     }
@@ -294,17 +290,13 @@ class treap_grid {
                 int_vector<> y_values;
                 load_from_file(y_values, temp_grid_y_filename);
                 m_y_values = t_y_vec(y_values);
-                std::cout << "done here..." << endl;
             }
             // (4) we convert the treap into a balanced parenthesis representation and
             // we also keep track of the root values for traversal
             {
-                std::cout << "done here...2" << endl;
                 bit_vector bv = bit_vector(2*(m_size+1), 0);
                 size_type count = 0;
-                std::cout << "done here...3" << endl;
                 _convert_bp(m_root.get(), bv, count);
-                std::cout << "done here...4" << endl;
                 m_tree = bp_tree<t_bp>(bv);
                 m_root_data = get_data(1, m_y_values[0]);
             }
@@ -345,10 +337,15 @@ class treap_grid {
         }
 
         range_type get_weight_data(size_type node, size_type pos) const {
+//            cout << "weight for:" << pos << endl;
             range_type rng = get_range(node, pos);
+//            cout << "\t rng = " << rng.first << "," << rng.second << endl;
             size_type max_pos = m_rmq(rng.first,rng.second);
+//            cout << "\t max_pos = " << max_pos << endl;
             size_type w_value = m_weights[pos];
+//            cout << "\t w_value = " << m_weights[pos] << endl;
             size_type w_max_value = m_weights[max_pos];
+//            cout << "\t w_max_value = " << m_weights[max_pos] << endl;
             return {w_max_value, w_value};
         }
 
@@ -464,23 +461,16 @@ class treap_grid {
             size_t min_distance = start-end;
             size_t min_pos = 0;
             size_t pos = 0;
-            cout << "start = " << start << endl;
-            cout << "end = " << end << endl;
             while(symbol < wt_y.sigma) {
                 size_t left_rank = wt_y.rank(start, symbol);
                 size_t right_rank = wt_y.rank(end+1, symbol);
                 size_t sym_count = right_rank - left_rank;
-                cout << "symbol = " << symbol << endl;
-                cout << "left_rank = " << left_rank << endl;
-                cout << "right_rank = " << right_rank << endl;
-                cout << "sym_count = " << sym_count << endl;
                 if (sym_count == 0) {
                     symbol++;
                     continue;
                 }
                 size_t select_start = left_rank+1;
                 while (select_start != right_rank+1) {
-                    cout << "select_start = " << select_start << endl;
                     pos = wt_y.select(select_start, symbol);
                     distance = size_type_abs(pos, mid_range);
                     if (distance > min_distance)
