@@ -28,6 +28,7 @@
 #include "sdsl/bp_tree.hpp"
 #include "sdsl/wavelet_trees.hpp"
 #include "sdsl/wt_algorithm.hpp"
+#include "bp_tree.hpp"
 
 #include <iostream>
 #include <memory>
@@ -137,7 +138,7 @@ class treap_grid {
                 size_type    m_x_value;
                 size_type    m_y_value;
                 size_type    m_y_dest_value;
-                size_type    m_node_id;
+                size_type    m_node;
 
                 node_ptr     m_left;
                 node_ptr     m_right;
@@ -160,8 +161,8 @@ class treap_grid {
         };
 
     public:
+        typedef std::tuple<size_type, size_type, size_type, size_type> node_data_type;
         // start_pos, end_pos, parent_node, left(0),right(1)
-        typedef std::tuple<size_type,size_type, size_type, size_type> node_data_type;
         typedef std::tuple<size_type, size_type, treap_node*, bool>      t_state;
         typedef std::array<size_type,6>                               node_data;
 
@@ -243,7 +244,6 @@ class treap_grid {
                     if (node == nullptr) {
                         cout << "range fucked up= " << start << " , " << end << endl;
                     }
-//                    cout << "node = " << min_pos << " | y_vec = " << y_vec[min_pos] << " parent = " << node->m_y_dest_value << endl;
                     node_ptr new_node = node_ptr(new treap_node(min_pos, y_vec[min_pos]-node->m_y_dest_value, y_vec[min_pos]));
 
                     if (left == 0) {
@@ -259,18 +259,19 @@ class treap_grid {
                 }
             }
             // (2) traverse the trep with pointer in pre-order and save the y-dest values and weights
-
             {
                 std::stack<treap_node*> st;
                 int_vector<> weights;
                 load_from_file(weights, buf_w.filename());
-
+                size_type node_id = 1;
                 int_vector_buffer<> permuted_weights(temp_grid_w_filename, std::ios::out);
                 int_vector_buffer<> permuted_y(temp_grid_y_filename, std::ios::out);
 
                 st.push(m_root.get());
                 while(!st.empty()) {
                     treap_node* tmp = st.top();
+                    tmp->m_node = node_id;
+                    node_id++;
                     permuted_weights.push_back(weights[tmp->m_x_value]);
                     permuted_y.push_back(tmp->m_y_value);
                     st.pop();
@@ -300,7 +301,7 @@ class treap_grid {
                 m_tree = bp_tree<t_bp>(bv);
                 m_root_data = get_data(1, m_y_values[0]);
             }
-            // (5) delete all pointers up to level x.
+            // (5) delete all pointers up to level t_levels.
             {
                 typedef std::pair<treap_node*,size_type> t_traverse;
                 std::queue<t_traverse> traverse;
@@ -308,7 +309,7 @@ class treap_grid {
                 traverse.push({m_root.get(),level});
                 while (!traverse.empty()) {
                     t_traverse data = traverse.front();
-                    treap_node* node =std::get<0>(data);
+                    treap_node* node = std::get<0>(data);
                     size_type lev = std::get<1>(data);
                     traverse.pop();
                     if (lev >= t_levels) {
@@ -329,6 +330,7 @@ class treap_grid {
         bp_tree<t_bp> getTree() {
             return m_tree;
         }
+
          range_type get_range(size_type node, size_type pos) const {
             size_t left = pos;
             size_t rank_param = m_tree.close(m_tree.enclose(node));
@@ -337,15 +339,10 @@ class treap_grid {
         }
 
         range_type get_weight_data(size_type node, size_type pos) const {
-//            cout << "weight for:" << pos << endl;
             range_type rng = get_range(node, pos);
-//            cout << "\t rng = " << rng.first << "," << rng.second << endl;
             size_type max_pos = m_rmq(rng.first,rng.second);
-//            cout << "\t max_pos = " << max_pos << endl;
             size_type w_value = m_weights[pos];
-//            cout << "\t w_value = " << m_weights[pos] << endl;
             size_type w_max_value = m_weights[max_pos];
-//            cout << "\t w_max_value = " << m_weights[max_pos] << endl;
             return {w_max_value, w_value};
         }
 
@@ -354,7 +351,7 @@ class treap_grid {
             size_type y_value = y_old + m_y_values[pos];
             size_type bp_close =  m_tree.close(node);
             size_type x_value =  bp_close - m_tree.preorder_rank(bp_close);
-            return {x_value, y_value,  node, pos};
+            return {x_value, y_value, node, pos};
         }
 
         node_data_type move_left(size_type node, size_type y_old) const {
@@ -363,17 +360,17 @@ class treap_grid {
                 return get_data(left_node,y_old);
             } else {
                 size_type max = std::numeric_limits<size_t>::max();
-                return {max,max,max};
+                return {max,max,max,max};
             }
         }
 
         node_data_type move_right(size_type node, size_type y_old) const {
-            size_type left_node = m_tree.next_sibling(node);
-            if (left_node != std::numeric_limits<size_t>::max()) {
-                return get_data(left_node,y_old);
+            size_type right_node = m_tree.next_sibling(node);
+            if (right_node != std::numeric_limits<size_t>::max()) {
+                return get_data(right_node,y_old);
             } else {
                 size_type max = std::numeric_limits<size_t>::max();
-                return {max,max,max};
+                return {max,max,max,max};
             }
         }
 
@@ -417,7 +414,7 @@ class treap_grid {
             size_type written_bytes = 0;
             written_bytes += write_member(m_size, out, child, "n");
             written_bytes += write_member(m_levels, out, child, "levels");
-            written_bytes += m_tree.serialize(out, child, "bp");
+            written_bytes += m_tree.serialize(out, child, "bp_tree");
             written_bytes += m_weights.serialize(out, child, "weights");
             written_bytes += m_y_values.serialize(out,child, "y_values");
             written_bytes += m_rmq.serialieze(out,child, "rmq");
@@ -433,7 +430,92 @@ class treap_grid {
             m_weights.load(in);
             m_y_values.load(in);
             m_rmq.load(in);
+
+            std::stack<std::pair<treap_node*, size_type> > st;
+            node_data_type  root_data = get_data(1,0);
+            m_root = node_ptr(new treap_node(std::get<0>(root_data),std::get<1>(root_data), std::get<1>(root_data)));
+            st.push({m_root.get(),1});
+            while(st.empty()) {
+                std::pair<treap_node*, size_type> data = st.top(); st.pop();
+                size_type node_pos = std::get<1>(data);
+                treap_node* node = std::get<0>(data);
+                if (m_tree.node_depth(node_pos) > m_levels)
+                    continue;
+                else {
+                    node_data_type left = move_left(node_pos, node->m_y_dest_value);
+                    if (std::get<0>(left) != std::numeric_limits<size_t>::max()) {
+                        node->m_left = node_ptr(new treap_node(std::get<0>(left),std::get<1>(left), std::get<1>(left)));
+                        st.push({node->m_left, std::get<2>(left)});
+                    }
+
+                    node_data_type right = move_right(node_pos, node->m_y_dest_value);
+                    if (std::get<0>(right) != std::numeric_limits<size_t>::max()) {
+                        node->m_right = node_ptr(new treap_node(std::get<0>(right),std::get<1>(right), std::get<1>(right)));
+                        st.push({node->m_right, std::get<2>(right)});
+                    }
+                }
+            }
         }
+
+        // this is for an example, should be removed
+        // cand_type = Weight*, weight , node, pos
+        typedef std::tuple<size_type,size_type,size_type,size_type, size_type, size_type> cand_type;
+        typedef std::pair<size_type,size_type> res_type;
+        typedef std::priority_queue<res_type,std::vector<res_type>, std::greater<res_type> > pq_type;
+
+        void top_k_rkonow( range_type p0, range_type p1, size_type k, pq_type& res)  {
+            std::priority_queue<cand_type> cand;
+            size_type x = std::get<0>(m_root_data);
+            size_type y = std::get<1>(m_root_data);
+            size_type n = std::get<2>(m_root_data);
+            size_type p = std::get<3>(m_root_data);
+            res_type w_data = get_weight_data(n, p);
+            cand.push({w_data.first, w_data.second, x, y, n, p});
+
+            while (!cand.empty() and (res.size() <= k or std::get<0>(cand.top()) > res.top().first )) {
+                cand_type v = cand.top();
+                size_type w_max = std::get<0>(v);
+                size_type w = std::get<1>(v);
+                x = std::get<2>(v);
+                y = std::get<3>(v);
+                cand.pop();
+                if (std::get<3>(v) <= std::get<1>(p1)) {
+                    if (std::get<0>(p0) <= std::get<2>(v) and std::get<2>(v) <= std::get<0>(p1)) {
+                        w_max = std::get<0>(v);
+                        w = std::get<1>(v);
+                        x = std::get<2>(v);
+                        y = std::get<3>(v);
+                        res.push({std::get<1>(v), std::get<2>(v)});
+                        if (res.size() > k) {
+                            res.pop();
+                        }
+                    }
+                }
+                if (std::get<2>(v) >= std::get<0>(p0)) {
+                    node_data_type n_data = move_left(std::get<4>(v), std::get<3>(v));
+                    if (std::get<0>(n_data) != std::numeric_limits<size_type>::max()) {
+                        x = std::get<0>(n_data);
+                        y = std::get<1>(n_data);
+                        n = std::get<2>(n_data);
+                        p = std::get<3>(n_data);
+                        w_data = get_weight_data(std::get<2>(n_data), std::get<3>(n_data));
+                        cand.push({w_data.first, w_data.second, x, y, n, p});
+                    }
+                }
+                if (std::get<2>(v) <= std::get<0>(p1)) {
+                    node_data_type n_data = move_right(std::get<4>(v), std::get<3>(v));
+                    if (std::get<0>(n_data) != std::numeric_limits<size_type>::max()) {
+                        x = std::get<0>(n_data);
+                        y = std::get<1>(n_data);
+                        n = std::get<2>(n_data);
+                        p = std::get<3>(n_data);
+                        w_data = get_weight_data(std::get<2>(n_data), std::get<3>(n_data));
+                        cand.push({w_data.first, w_data.second, x, y, n, p});
+                    }
+                }
+            }
+        }
+        // end example
 
     private:
         void _delete_pointers(node_ptr&& node) {
@@ -447,7 +529,6 @@ class treap_grid {
         void _convert_bp(treap_node* node, bit_vector& bitmap, size_type& count) {
             bitmap[count++] = true;
             while(node != nullptr) {
-                node->m_node_id = count-1; // check this
                 _convert_bp(node->m_left.get(), bitmap,count);
                 node = node->m_right.get();
             }

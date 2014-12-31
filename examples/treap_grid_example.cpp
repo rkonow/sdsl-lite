@@ -1,6 +1,8 @@
 #include "sdsl/bp_tree.hpp"
 #include "sdsl/treap_grid.hpp"
 #include "sdsl/treap_grid_algorithm.hpp"
+#include "../include/sdsl/treap_grid.hpp"
+
 using namespace sdsl;
 using namespace std;
 
@@ -77,17 +79,27 @@ int main(int argc, char** argv) {
         treap_grid<> tg2;
         construct_im(tg2, {{0,0,2},{1,2,3},{2,1,2},{3,0,2},{4,0,1},{5,1,4},{6,0,1},{7,1,1},{8,0,8},{9,2,5}});
         traverse(tg2, 1);
-        auto mts_it = map_to_sorted_sequence(tg2, {2, 7}, {0,1});
-        while (mts_it) {
-            cout << get<0>(*mts_it) << " , "  << get<1>(*mts_it)  << " , " << get<2>(*mts_it) << " , " << get<3>(*mts_it) << endl;
-            ++mts_it;
+        typedef unsigned long long  size_type;
+        typedef std::pair<size_type,size_type> res_type;
+        typedef std::priority_queue<res_type,std::vector<res_type>, std::greater<res_type> > pq_type;
+        pq_type res;
+        tg2.top_k_rkonow({2,0}, {7,1}, 10, res);
+        while(!res.empty()) {
+            cout <<  res.top().second << " weight: " <<  res.top().first << endl;
+            res.pop();
         }
-        auto topk_it2 = top_k(tg2, {2,0}, {7,1});
-        while (topk_it2) {
-            auto point_weight = *topk_it2;
-            cout << point_weight.first <<" weight: "<<point_weight.second << endl;
-            ++topk_it2;
-        }
+//        traverse(tg2, 1);
+//        auto mts_it = map_to_sorted_sequence(tg2, {2, 7}, {0,1});
+//        while (mts_it) {
+//            cout << get<0>(*mts_it) << " , "  << get<1>(*mts_it)  << " , " << get<2>(*mts_it) << " , " << get<3>(*mts_it) << endl;
+//            ++mts_it;
+//        }
+//        auto topk_it2 = top_k(tg2, {2,0}, {7,1});
+//        while (topk_it2) {
+//            auto point_weight = *topk_it2;
+//            cout << point_weight.first <<" weight: "<<point_weight.second << endl;
+//            ++topk_it2;
+//        }
     }
 }
 

@@ -24,6 +24,11 @@
 
 #include <limits>
 #include <utility>
+#include <vector>
+#include <stack>
+#include "sdsl/int_vector_buffer.hpp"
+#include "sdsl/int_vector.hpp"
+
 
 namespace sdsl {
 
@@ -114,8 +119,8 @@ private:
         const t_treap_grid*     m_treap_grid = nullptr;
         range_type              m_y_range;
         range_type              m_x_range;
-        std::stack<t_data>    m_stack;
-        ret_type                 m_ret;
+        std::stack<t_data>      m_stack;
+        ret_type                m_ret;
         bool                    m_valid = false;
 
         void cond_push(t_data& data) {
@@ -166,35 +171,30 @@ private:
                 auto pos     = std::get<3>(m_stack.top());
 
                 m_stack.pop();
-//                cout << "m_x_range = " << m_x_range.first << " , " << m_x_range.second << endl;
-//                cout << "m_y_range = " << m_y_range.first << " , " << m_y_range.second << endl;
-//                cout << "x_value = " << x_value << endl;
-//                cout << "y_value = " << y_value << endl;
-
                 if (std::get<0>(m_x_range) <= x_value and std::get<1>(m_x_range) >= x_value
                         and std::get<0>(m_y_range) <= y_value and std::get<1>(m_y_range) >= y_value)
                 {
-//                    cout << "inside..." << x_value << " , " << y_value << endl;
                     std::pair<size_type, size_type> weight_data = m_treap_grid->get_weight_data(node,pos);
                     m_ret = {x_value, y_value, weight_data.first, weight_data.second};
-                    t_data data = m_treap_grid->move_left(node, y_value);
+                    t_data data;
+
+                    data = m_treap_grid->move_left(node, y_value);
                     cond_push(data);
                     data = m_treap_grid->move_right(node, y_value);
                     cond_push(data);
                     m_valid  = true;
                     break;
                 } else {
+                    if (std::get<1>(m_y_range) < y_value)
+                        continue;
                     t_data data;
                     if (std::get<1>(m_x_range) < x_value) {
-//                        cout << "end = " << std::get<1>(m_x_range) << "is bigger than " << x_value << endl;
-//                        cout << "going left" << endl;
                         data = m_treap_grid->move_left(node,y_value);
                     } else if(std::get<0>(m_x_range) > x_value) {
-//                        cout << "start = "<<  std::get<0>(m_x_range) << "is bigger than " << x_value << endl;
-//                        cout << "going right" << endl;
                         data = m_treap_grid->move_right(node,y_value);
                     }
-                    cond_push(data);
+                    if (std::get<0>(data) != std::numeric_limits<size_type>::max())
+                        cond_push(data);
                 }
             }
             return *this;

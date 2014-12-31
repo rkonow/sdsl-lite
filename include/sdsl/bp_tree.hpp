@@ -117,11 +117,6 @@ class bp_tree {
             return (m_bp.size()+1)/2;
         }
 
-        // TODO: implement this
-    //    size_type degree(const node_type &v) const {
-    //
-    //    }
-
         size_type first_child(const size_type i) const {
             if (!isleaf(i)) {
                 return i+1;
@@ -148,6 +143,10 @@ class bp_tree {
 
         size_type preorder_rank(const size_type v) const {
             return m_bp.rank(v);
+        }
+
+        size_type node_depth(const size_type v) const {
+            return 2*m_bp.rank(v) - v;
         }
 
         size_type close(const size_type v) const {
