@@ -14,8 +14,8 @@ void getValues(treap_grid<>& tg, size_t node) {
 
 void getMaxInRange(treap_grid<>& tg, pair<size_t,size_t> rng) {
     size_t max_position = tg.m_rmq(rng.first,rng.second);
-    cout << " [ max position: " <<  max_position << "] ";
-    cout << " [ max value:"    << tg.m_weights[max_position] <<"] ";
+    cout << " [ max position: " <<  max_position << " ] ";
+    cout << " [ max value:"    << tg.m_weights[max_position] <<" ] ";
 }
 
 std::pair<size_t,size_t> getXRange(bp_tree<>& bp, size_t node) {
@@ -83,17 +83,17 @@ int main(int argc, char** argv) {
         typedef std::pair<size_type,size_type> res_type;
         typedef std::priority_queue<res_type,std::vector<res_type>, std::greater<res_type> > pq_type;
         pq_type res;
-        tg2.top_k_rkonow({2,0}, {7,1}, 10, res);
-        while(!res.empty()) {
-            cout <<  res.top().second << " weight: " <<  res.top().first << endl;
-            res.pop();
-        }
-//        traverse(tg2, 1);
-//        auto mts_it = map_to_sorted_sequence(tg2, {2, 7}, {0,1});
-//        while (mts_it) {
-//            cout << get<0>(*mts_it) << " , "  << get<1>(*mts_it)  << " , " << get<2>(*mts_it) << " , " << get<3>(*mts_it) << endl;
-//            ++mts_it;
+//        tg2.top_k_rkonow({2,0}, {7,1}, 10, res);
+//        while(!res.empty()) {
+//            cout <<  res.top().second << " weight: " <<  res.top().first << endl;
+//            res.pop();
 //        }
+//        traverse(tg2, 1);
+        auto mts_it = map_to_sorted_sequence(tg2, {2, 9}, {0,2});
+        while (mts_it) {
+            cout << get<0>(*mts_it) << " , "  << get<1>(*mts_it)  << " , " << get<2>(*mts_it) << " , " << get<3>(*mts_it) << endl;
+            ++mts_it;
+        }
 //        auto topk_it2 = top_k(tg2, {2,0}, {7,1});
 //        while (topk_it2) {
 //            auto point_weight = *topk_it2;
