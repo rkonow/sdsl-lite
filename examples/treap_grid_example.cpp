@@ -89,17 +89,17 @@ int main(int argc, char** argv) {
 //            res.pop();
 //        }
 //        traverse(tg2, 1);
-        auto mts_it = map_to_sorted_sequence(tg2, {2, 9}, {0,2});
+        auto mts_it = map_to_sorted_sequence(tg2, {2, 7}, {0,1});
         while (mts_it) {
             cout << get<0>(*mts_it) << " , "  << get<1>(*mts_it)  << " , " << get<2>(*mts_it) << " , " << get<3>(*mts_it) << endl;
             ++mts_it;
         }
-//        auto topk_it2 = top_k(tg2, {2,0}, {7,1});
-//        while (topk_it2) {
-//            auto point_weight = *topk_it2;
-//            cout << point_weight.first <<" weight: "<<point_weight.second << endl;
-//            ++topk_it2;
-//        }
+        auto topk_it2 = top_k(tg2, {2,0}, {7,1});
+        while (topk_it2) {
+            auto point_weight = *topk_it2;
+            cout << "(" << point_weight.first.first << "," << point_weight.first.second <<") weight: "<<point_weight.second << endl;
+            ++topk_it2;
+        }
     }
 }
 

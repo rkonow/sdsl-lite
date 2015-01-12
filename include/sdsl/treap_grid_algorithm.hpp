@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 #include <stack>
+#include <queue>
 #include "sdsl/int_vector_buffer.hpp"
 #include "sdsl/int_vector.hpp"
 
@@ -111,9 +112,16 @@ class treap_grid_iterator
         typedef typename t_treap_grid::size_type                            size_type;
         typedef std::pair<int_vector<>::size_type, int_vector<>::size_type> range_type;
 
-        typedef typename t_treap_grid::treap_node                                   treap_node;
+        typedef typename t_treap_grid::treap_node                            treap_node;
+        struct comp_cand {
+            bool operator()(treap_node& a, treap_node& b ) { return a.m_max_weight < b.m_max_weight; }
+        };
+        struct comp_res {
+            bool operator()(treap_node& a, treap_node& b ) { return  a.m_weight < b.m_weight; }
+        };
 
-          // x_value, y_value, w_value, w_max //
+
+    // x_value, y_value, w_value, w_max //
          typedef std::array<size_type,4>                                   ret_type;
 
 private:
@@ -122,14 +130,10 @@ private:
         range_type                              m_x_range;
         ret_type                                m_ret;
         bool                                    m_valid = false;
-        std::stack<treap_node>    m_stack;
+        std::stack<treap_node>                  m_stack;
+        std::priority_queue< treap_node , std::vector<treap_node>, comp_cand > cand;
+        std::priority_queue< treap_node , std::vector<treap_node>, comp_res > res;
 
-
-    void cond_push(treap_node& node) {
-            if (node.m_x_value != std::numeric_limits<size_type>::max()) {
-                m_stack.push(node);
-            }
-        }
 
     public:
         treap_grid_iterator() = default;
@@ -138,7 +142,9 @@ private:
         treap_grid_iterator& operator=(const treap_grid_iterator&) = default;
         treap_grid_iterator& operator=(treap_grid_iterator&&) = default;
 
-        treap_grid_iterator(const t_treap_grid* tg, const range_type& x_range,
+
+
+    treap_grid_iterator(const t_treap_grid* tg, const range_type& x_range,
                 const range_type& y_range) : m_treap_grid(tg),
                                              m_y_range(y_range),
                                              m_x_range(x_range),
@@ -147,7 +153,7 @@ private:
                                              m_valid(false)
         {
             if (tg != nullptr) {
-                m_stack.push(tg->m_root_data);
+                cand.push(tg->m_root_data);
                 ++(*this);
             }
         }
@@ -155,37 +161,39 @@ private:
         treap_grid_iterator& operator++()
         {
             m_valid = false;
-            while (!m_stack.empty()) {
-                treap_node node = m_stack.top();
-                m_stack.pop();
-                if (std::get<0>(m_x_range) <= node.m_x_value and std::get<1>(m_x_range) >= node.m_x_value
-                        and std::get<0>(m_y_range) <= node.m_y_value and std::get<1>(m_y_range) >= node.m_y_value)
-                {
-//                    cout << "node max weight = " << node.m_max_weight << endl;
-                    m_ret = {node.m_x_value, node.m_y_value, node.m_weight, node.m_max_weight};
-                    treap_node left = m_treap_grid->move_left(node);
-                    if (left.m_x_value != std::numeric_limits<size_type>::max()) {
-                        m_stack.push(left);
+            while(!cand.empty()) {
+                treap_node node = cand.top();
+                cand.pop();
+                if (node.m_y_value <= std::get<1>(m_y_range)) {
+                    if (node.m_x_value >= std::get<0>(m_x_range) and node.m_x_value <= std::get<1>(m_x_range)) {
+                        res.push(node);
+                        if (cand.top().m_max_weight <= res.top().m_weight) {
+                            treap_node node = res.top();
+                            m_ret = {node.m_x_value, node.m_y_value, node.m_weight, node.m_max_weight};
+                            res.pop();
+                            m_valid = true;
+                            return *this;
+                        }
                     }
-                    treap_node right = m_treap_grid->move_right(node);
-                    if (right.m_x_value != std::numeric_limits<size_type>::max()) {
-                        m_stack.push(right);
+                    if (node.m_x_value >= std::get<0>(m_x_range)) {
+                        treap_node left = m_treap_grid->move_left(node);
+                        if (left.m_x_value != std::numeric_limits<size_type>::max()) {
+                            cand.push(left);
+                        }
                     }
-                    m_valid  = true;
-                    break;
-                } else {
-                    if (std::get<1>(m_y_range) < node.m_y_value)
-                        continue;
-
-                    treap_node next_node;
-                    if (std::get<1>(m_x_range) < node.m_x_value) {
-                         next_node = m_treap_grid->move_left(node);
-                    } else if(std::get<0>(m_x_range) > node.m_x_value) {
-                        next_node  = m_treap_grid->move_right(node);
+                    if (node.m_x_value <= std::get<1>(m_x_range)) {
+                        treap_node right = m_treap_grid->move_right(node);
+                        if (right.m_x_value != std::numeric_limits<size_type>::max()) {
+                            cand.push(right);
+                        }
                     }
-                    if (next_node.m_x_value != std::numeric_limits<size_type>::max())
-                        m_stack.push(next_node);
                 }
+            }
+            if (res.size() > 0) {
+                treap_node node = res.top();
+                m_ret = {node.m_x_value, node.m_y_value, node.m_weight, node.m_max_weight};
+                res.pop();
+                m_valid = true;
             }
             return *this;
         }

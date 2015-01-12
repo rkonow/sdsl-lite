@@ -42,7 +42,7 @@ using std::endl;
 
 namespace sdsl
 {
-template<size_t  t_levels=10,
+template<size_t  t_levels=2,
         typename t_bp=bp_support_sada<>,
         typename t_rmq=rmq_succinct_sct<false>,
         typename t_weight_vec=dac_vector<>,
@@ -57,7 +57,7 @@ class treap_grid {
         enum { permuted_x = false};
         typedef int_vector<>::size_type         size_type;
         typedef treap_node*                     node_ptr;
-        typedef std::complex<uint64_t>          point_type;
+        typedef std::pair<size_type,size_type>  point_type;
         typedef std::pair<size_type,size_type>  range_type;
 
 
@@ -67,14 +67,24 @@ class treap_grid {
             public:
                 typedef void(*t_mfptr)();
                 typedef std::pair<point_type, uint64_t> t_point_val;
-                typedef std::array<uint64_t, 4> t_state;
 
             private:
                 const treap_grid*            m_topk;
-                std::priority_queue<t_state> m_pq;
                 t_point_val                  m_point_val;
                 bool                         m_valid = false;
+
             public:
+                struct comp_cand {
+                    bool operator()(treap_node& a, treap_node& b ) { return a.m_max_weight < b.m_max_weight; }
+                };
+                struct comp_res {
+                    bool operator()(treap_node& a, treap_node& b ) { return  a.m_weight < b.m_weight; }
+                };
+                std::priority_queue< treap_node , std::vector<treap_node>, comp_cand > cand;
+                std::priority_queue< treap_node , std::vector<treap_node>, comp_res > res;
+                point_type m_p1;
+                point_type m_p2;
+
                 top_k_iterator() = default;
                 top_k_iterator(const top_k_iterator&) = default;
                 top_k_iterator(top_k_iterator&&) = default;
@@ -82,36 +92,54 @@ class treap_grid {
                 top_k_iterator& operator=(top_k_iterator&&) = default;
 
                 top_k_iterator(const treap_grid& topk, point_type p1, point_type p2) :
-                        m_topk(&topk), m_valid(topk.size()>0)
+                        m_topk(&topk), m_valid(topk.size()>0), m_p1(p1), m_p2(p2)
                 {
-                    if (m_topk->size() > 0) {
-                        auto iv_it = map_to_sorted_sequence(*m_topk,
-                                {real(p1), real(p2)}, {imag(p1), imag(p2)});
-                        while (iv_it) {
-                            auto x = std::get<0>(*iv_it);
-                            auto y = std::get<1>(*iv_it);
-                            auto w = std::get<3>(*iv_it);
-                            auto max_w = std::get<2>(*iv_it);
-                            m_pq.push({max_w, w, x, y});
-                            ++iv_it;
-                        }
-                        ++(*this);
-                    }
-                }
+                    cand.push(m_topk->m_root_data);
+                    ++(*this);
+               }
 
 
                 //! Prefix increment of the iterator
                 top_k_iterator& operator++()
                 {
                     m_valid = false;
-                    if (!m_pq.empty()) {
-                        auto s = m_pq.top();
-                        m_point_val = { {s[2],s[3]}, s[1] };
-                        m_pq.pop();
+                    while(!cand.empty()) {
+                        treap_node node = cand.top();
+                        cand.pop();
+                        if (node.m_y_value <= std::get<1>(m_p2)) {
+                            if (node.m_x_value >= std::get<0>(m_p1)) {
+                                treap_node left = m_topk->move_left(node);
+                                if (left.m_x_value != std::numeric_limits<size_type>::max()) {
+                                    cand.push(left);
+                                }
+                            }
+                            if (node.m_x_value <= std::get<0>(m_p2)) {
+                                treap_node right = m_topk->move_right(node);
+                                if (right.m_x_value != std::numeric_limits<size_type>::max()) {
+                                    cand.push(right);
+                                }
+                            }
+                            if (node.m_x_value >= std::get<0>(m_p1) and node.m_x_value <= std::get<0>(m_p2)) {
+                                res.push(node);
+                                if (cand.top().m_max_weight <= res.top().m_weight) {
+                                    treap_node node = res.top();
+                                    m_point_val = { {node.m_x_value,0},  node.m_weight};
+                                    res.pop();
+                                    m_valid = true;
+                                    return *this;
+                                }
+                            }
+                        }
+                    }
+                    if (res.size() > 0) {
+                        treap_node node = res.top();
+                        m_point_val = { {node.m_x_value, 0},  node.m_weight};
+                        res.pop();
                         m_valid = true;
                     }
                     return *this;
-                };
+                }
+
 
                 //! Postfix increment of the iterator
                 top_k_iterator operator++(int)
@@ -148,35 +176,8 @@ class treap_grid {
                 node_ptr     m_right;
 
                 treap_node() = default;
-                treap_node(const treap_node& tr) {
-                    m_x_value = tr.m_x_value;
-                    m_y_value = tr.m_y_value;
-                    m_y_dest_value = tr.m_y_dest_value;
-                    m_node = tr.m_node;
-                    m_pos = tr.m_pos;
-                    m_weight = tr.m_weight;
-                    m_max_weight = tr.m_max_weight;
-                    m_pointer = tr.m_pointer;
-
-                    this->m_left = tr.m_left;
-                    this->m_right = tr.m_right;
-                }
-                treap_node& operator=(const treap_node& tr) {
-                    if (this != &tr) {
-                        m_x_value = tr.m_x_value;
-                        m_y_value = tr.m_y_value;
-                        m_y_dest_value = tr.m_y_dest_value;
-                        m_node = tr.m_node;
-                        m_pos = tr.m_pos;
-                        m_weight = tr.m_weight;
-                        m_max_weight = tr.m_max_weight;
-                        m_pointer = tr.m_pointer;
-
-                        this->m_left = tr.m_left;
-                        this->m_right = tr.m_right;
-                    }
-                    return *this;
-                }
+                treap_node(const treap_node& tr) = default;
+                treap_node& operator=(const treap_node& tr) = default;
                 treap_node& operator=(treap_node&& tr) = default;
                 treap_node(treap_node&& tr) = default;
 
@@ -392,13 +393,12 @@ class treap_grid {
             size_type left = node->m_pos;
             size_type rank_param = m_tree.close(m_tree.enclose(node->m_node));
             size_type right = m_tree.preorder_rank(rank_param) - 2;
-//            cout << "left = " << left << endl;
-//            cout << "right = " << right << endl;
             size_type max_pos = m_rmq(left,right);
             node->m_max_weight = m_weights[max_pos];
         }
 
         treap_node get_data(size_type node, size_type y_old) const {
+            // weights
             size_type pos = m_tree.preorder_rank(node) - 2;
             size_type left = pos;
             size_type rank_param = m_tree.close(m_tree.enclose(node));
