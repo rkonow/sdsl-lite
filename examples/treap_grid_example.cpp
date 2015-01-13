@@ -100,6 +100,25 @@ int main(int argc, char** argv) {
             cout << "(" << point_weight.first.first << "," << point_weight.first.second <<") weight: "<<point_weight.second << endl;
             ++topk_it2;
         }
+        ofstream out("test.tmp");
+        size_t size = tg2.serialize(out);
+        cout << "structure size = \t " << size << endl;
+        out.close();
+
+        ifstream in("test.tmp");
+        treap_grid<> tg3;
+        tg3.load(in);
+        in.close();
+        traverse(tg3, 1);
+        tg3.print_inorder(cout);
+        cout << endl;
+        auto topk_it3 = top_k(tg3, {2,0}, {7,1});
+        while (topk_it3) {
+            auto point_weight = *topk_it3;
+            cout << "(" << point_weight.first.first << "," << point_weight.first.second <<") weight: "<<point_weight.second << endl;
+            ++topk_it3;
+        }
+
     }
 }
 

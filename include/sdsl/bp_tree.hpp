@@ -176,7 +176,7 @@ class bp_tree {
 
         void load(std::istream &in) {
             m_bv.load(in);
-            m_bp.load(in);
+            m_bp.load(in,&m_bv);
             m_bp.set_vector(&m_bv);
         }
     };

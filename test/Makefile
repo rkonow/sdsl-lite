@@ -1,4 +1,3 @@
-SHELL=bash
 include ../Make.helper
 CXX_FLAGS=$(MY_CXX_FLAGS)  -g -O3 \
 		  -I$(INC_DIR) \
@@ -57,6 +56,8 @@ K2TREAP_TESTS:=$(patsubst %,k2treap-test/%,$(K2TREAP_TC_PATH))
 
 WTTOPK_TC_PATH:=$(call config_column,WtTopkTest.config,1)
 WTTOPK_TESTS:=$(patsubst %,wttopk-test/%,$(WTTOPK_TC_PATH))
+
+
 
 TC_PATHS:= $(WT_BYTE_TC_PATHS) $(WT_INT_TC_PATHS) \
 		   $(CSA_BYTE_TC_PATHS) $(CSA_INT_TC_PATHS) \
@@ -263,6 +264,20 @@ wttopk-test/%: ./WtTopkTest.x
 	$(PREFIX) ./WtTopkTest.x test_cases/WTK.$* $(TMP_DIR)/WTK.$*
 	@echo "TEST_CASE: test_cases/$* in-memory"
 	$(PREFIX) ./WtTopkTest.x test_cases/WTK.$* $(TMP_DIR)/WTK.$* in-memory
+
+treapgrid-test/%: ./TreapGridTest.x
+	$(eval X:=$(call config_select,TreapGridTest.config,$*,2))
+	$(eval Y:=$(call config_select,TreapGridTest.config,$*,3))
+	$(eval W:=$(call config_select,TreapGridTest.config,$*,4))
+	make $(X) $(Y) $(W)
+	@echo "X=$X, Y=$Y, W=$W"
+	mv $(X) test_cases/WTK.$*.x
+	mv $(Y) test_cases/WTK.$*.y
+	mv $(W) test_cases/WTK.$*.w
+	@echo "TEST_CASE: $* semi-external"
+	$(PREFIX) ./TreapGridTest.x test_cases/WTK.$* $(TMP_DIR)/WTK.$*
+	@echo "TEST_CASE: test_cases/$* in-memory"
+	$(PREFIX) ./TreapGridTest.x test_cases/WTK.$* $(TMP_DIR)/WTK.$* in-memory
 
 # Format: test_cases/int-vec.[LEN].[WIDTH].[DEFAULT].[SEED]
 test_cases/int-vec.%: IntVectorGenerator.x

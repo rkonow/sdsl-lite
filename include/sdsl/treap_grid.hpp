@@ -123,7 +123,7 @@ class treap_grid {
                                 res.push(node);
                                 if (cand.top().m_max_weight <= res.top().m_weight) {
                                     treap_node node = res.top();
-                                    m_point_val = { {node.m_x_value,0},  node.m_weight};
+                                    m_point_val = { {node.m_x_value, node.m_y_value},  node.m_weight};
                                     res.pop();
                                     m_valid = true;
                                     return *this;
@@ -133,7 +133,7 @@ class treap_grid {
                     }
                     if (res.size() > 0) {
                         treap_node node = res.top();
-                        m_point_val = { {node.m_x_value, 0},  node.m_weight};
+                        m_point_val = { {node.m_x_value, node.m_y_value},  node.m_weight};
                         res.pop();
                         m_valid = true;
                     }
@@ -220,7 +220,7 @@ class treap_grid {
         t_weight_vec                m_weights;
         t_y_vec                     m_y_values;
         size_type                   m_size;
-        size_type                   m_levels = 0;
+        size_type                   m_levels;
         treap_node                  m_root_data; // fix this for serialize
 
         treap_grid() = default;
@@ -449,7 +449,8 @@ class treap_grid {
         }
 
         // TODO: auxiliary functions, we're going to delete these
-        void print_inorder(std::ostream& os) const {
+        void print_inorder(std::ostream& os)  {
+            m_root = &m_root_data;
             if (m_root != nullptr) {
                 _print_inorder(m_root, os);
             }
@@ -479,11 +480,11 @@ class treap_grid {
                     v, name, util::class_name(*this));
             size_type written_bytes = 0;
             written_bytes += write_member(m_size, out, child, "n");
-            written_bytes += write_member(m_levels, out, child, "levels");
+//            written_bytes += write_member(m_levels, out, child, "levels");
             written_bytes += m_tree.serialize(out, child, "bp_tree");
             written_bytes += m_weights.serialize(out, child, "weights");
             written_bytes += m_y_values.serialize(out,child, "y_values");
-            written_bytes += m_rmq.serialieze(out,child, "rmq");
+            written_bytes += m_rmq.serialize(out,child, "rmq");
             structure_tree::add_size(child, written_bytes);
             return written_bytes;
         }
@@ -491,33 +492,45 @@ class treap_grid {
         //! Loads the data structure from the given istream.
         void load(std::istream& in) {
             read_member(m_size, in);
-            read_member(m_levels, in);
+//            read_member(m_levels, in);
             m_tree.load(in);
             m_weights.load(in);
             m_y_values.load(in);
             m_rmq.load(in);
 
-            std::stack<std::pair<treap_node*, size_type> > st;
-            node_data_type  root_data = get_data(1,0);
-            m_root = new treap_node(std::get<0>(root_data),std::get<1>(root_data), std::get<1>(root_data));
-            st.push({m_root,1});
-            while(st.empty()) {
-                std::pair<treap_node*, size_type> data = st.top(); st.pop();
-                size_type node_pos = std::get<1>(data);
-                treap_node* node = std::get<0>(data);
-                if (m_tree.node_depth(node_pos) > m_levels)
-                    continue;
-                else {
-                    node_data_type left = move_left(node_pos, node->m_y_dest_value);
-                    if (std::get<0>(left) != std::numeric_limits<size_t>::max()) {
-                        node->m_left = new treap_node(std::get<0>(left),std::get<1>(left), std::get<1>(left));
-                        st.push({node->m_left, std::get<2>(left)});
-                    }
+            cout << "m_levels = " << m_levels << endl;
+            cout << "m_size = " << m_size << endl;
 
-                    node_data_type right = move_right(node_pos, node->m_y_dest_value);
-                    if (std::get<0>(right) != std::numeric_limits<size_t>::max()) {
-                        node->m_right = new treap_node(std::get<0>(right),std::get<1>(right), std::get<1>(right));
-                        st.push({node->m_right, std::get<2>(right)});
+            std::stack<std::pair<treap_node*, size_type> > st;
+            m_root_data  = get_data(1,0);
+
+            size_t levels = 0;
+            st.push({&m_root_data, levels});
+            while(!st.empty()) {
+                std::pair<treap_node*, size_type> data = st.top(); st.pop();
+                size_type depth = std::get<1>(data);
+                treap_node* node = std::get<0>(data);
+
+                if (depth >= t_levels) {
+                    continue;
+                } else {
+                    cout << "node = " << node->m_x_value <<  " , " << node->m_node << endl;
+                    cout << "depth = " << depth << endl;
+                    treap_node next_node = move_left(*node);
+                    cout << "left = " << next_node.m_x_value << " x = " << endl;
+                    if (next_node.m_x_value != std::numeric_limits<size_t>::max()) {
+
+                        node->m_left = new treap_node(next_node.m_x_value,next_node.m_y_value,next_node.m_y_value,
+                                next_node.m_node,next_node.m_pos,next_node.m_weight,next_node.m_max_weight,true,nullptr,nullptr);
+                        st.push({node->m_left, depth+1});
+                    }
+                    next_node = move_right(*node);
+                    cout << "right = " << next_node.m_x_value << endl;
+
+                    if (next_node.m_x_value != std::numeric_limits<size_t>::max()) {
+                        node->m_right = new treap_node(next_node.m_x_value,next_node.m_y_value,next_node.m_y_value,
+                                next_node.m_node,next_node.m_pos,next_node.m_weight,next_node.m_max_weight,true,nullptr,nullptr);
+                        st.push({node->m_right, depth+1});
                     }
                 }
             }
@@ -634,13 +647,13 @@ class treap_grid {
             return min_pos;
         }
 
-//        void _print_inorder(node_ptr& node, std::ostream& os) const {
-//            if (node != nullptr) {
-//                _print_inorder(node->m_left, os);
-//                os << "(" << node->m_x_value << "," << node->m_y_value << ") ";
-//                _print_inorder(node->m_right, os);
-//            }
-//        }
+        void _print_inorder(node_ptr& node, std::ostream& os)  {
+            if (node != nullptr) {
+                _print_inorder(node->m_left, os);
+                os << "(" << node->m_x_value << "," << node->m_y_value << ") ";
+                _print_inorder(node->m_right, os);
+            }
+        }
 //
 //        void _print_preorder(node_ptr node, std::ostream& os) const {
 //            if (node != nullptr) {
