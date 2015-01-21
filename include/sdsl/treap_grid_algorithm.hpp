@@ -22,13 +22,13 @@
 #ifndef INCLUDED_SDSL_TREAP_GRID_ALGORITHM
 #define INCLUDED_SDSL_TREAP_GRID_ALGORITHM
 
-#include <limits>
-#include <utility>
-#include <vector>
-#include <stack>
-#include <queue>
-#include "sdsl/int_vector_buffer.hpp"
-#include "sdsl/int_vector.hpp"
+//#include <limits>
+//#include <utility>
+//#include <vector>
+//#include <stack>
+//#include <queue>
+//#include "sdsl/int_vector_buffer.hpp"
+//#include "sdsl/int_vector.hpp"
 
 
 namespace sdsl {
@@ -216,12 +216,12 @@ private:
             return (t_mfptr)(m_valid);
         }
 };
-
-template<typename t_treap_grid>
-treap_grid_iterator<t_treap_grid>
-map_to_sorted_sequence(const t_treap_grid& tg, const std::pair<size_t,size_t>& x_range, const std::pair<size_t,size_t>& y_range)
-{
-    return treap_grid_iterator<t_treap_grid>(&tg, x_range, y_range);
-}
+//
+//template<typename t_treap_grid>
+//treap_grid_iterator<t_treap_grid>
+//map_to_sorted_sequence(const t_treap_grid& tg, const std::pair<size_t,size_t>& x_range, const std::pair<size_t,size_t>& y_range)
+//{
+//    return treap_grid_iterator<t_treap_grid>(&tg, x_range, y_range);
+//}
 }
 #endif

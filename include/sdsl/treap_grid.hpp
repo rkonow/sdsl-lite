@@ -29,6 +29,7 @@
 #include "sdsl/wavelet_trees.hpp"
 #include "sdsl/wt_algorithm.hpp"
 #include "bp_tree.hpp"
+#include "sdsl/treap_grid_algorithm.hpp"
 
 #include <iostream>
 #include <memory>
@@ -41,7 +42,7 @@ using std::cout;
 using std::endl;
 
 namespace sdsl {
-template<size_t t_levels = 2,
+template<size_t t_levels = 32,
         typename t_bp=bp_support_sada<>,
         typename t_rmq=rmq_succinct_sct<false>,
         typename t_weight_vec=dac_vector<>,
@@ -58,7 +59,7 @@ public:
     };
     typedef int_vector<>::size_type size_type;
     typedef treap_node *node_ptr;
-    typedef std::pair<size_type, size_type> point_type;
+    typedef std::complex<uint64_t> point_type;
     typedef std::pair<size_type, size_type> range_type;
 
 
@@ -114,20 +115,20 @@ public:
             while (!cand.empty()) {
                 treap_node node = cand.top();
                 cand.pop();
-                if (node.m_y_value <= std::get<1>(m_p2)) {
-                    if (node.m_x_value >= std::get<0>(m_p1)) {
+                if (node.m_y_value <= imag(m_p2)) {
+                    if (node.m_x_value >= real(m_p1)) {
                         treap_node left = m_topk->move_left(node);
                         if (left.m_x_value != std::numeric_limits<size_type>::max()) {
                             cand.push(left);
                         }
                     }
-                    if (node.m_x_value <= std::get<0>(m_p2)) {
+                    if (node.m_x_value <= real(m_p2)) {
                         treap_node right = m_topk->move_right(node);
                         if (right.m_x_value != std::numeric_limits<size_type>::max()) {
                             cand.push(right);
                         }
                     }
-                    if (node.m_x_value >= std::get<0>(m_p1) and node.m_x_value <= std::get<0>(m_p2)) {
+                    if (node.m_x_value >= real(m_p1) and node.m_x_value <= real(m_p2)) {
                         res.push(node);
                         if (cand.top().m_max_weight <= res.top().m_weight) {
                             treap_node node = res.top();
@@ -339,7 +340,6 @@ public:
             int_vector<> y_values;
             load_from_file(y_values, temp_grid_y_filename);
             m_y_values = t_y_vec(y_values);
-
         }
         // (4) we convert the treap into a balanced parenthesis representation and
         // we also keep track of the root values for traversal
@@ -383,10 +383,11 @@ public:
         sdsl::remove(temp_grid_y_filename);
     }
 
-    ~treap_grid() {
-        m_root = &m_root_data;
-        _delete_pointers(m_root);
-    }
+//    ~treap_grid() {
+//        m_root = &m_root_data;
+//        if (m_root != nullptr)
+//            _delete_pointers(m_root);
+//    }
 
     bp_tree<t_bp> getTree() {
         return m_tree;
@@ -398,6 +399,7 @@ public:
         size_type right = m_tree.preorder_rank(rank_param) - 2;
         size_type max_pos = m_rmq(left, right);
         node->m_max_weight = m_weights[max_pos];
+        node->m_weight = m_weights[node->m_pos];
     }
 
     treap_node get_data(size_type node, size_type y_old) const {
@@ -409,12 +411,12 @@ public:
         size_type max_pos = m_rmq(left, right);
         size_type w_value = m_weights[pos];
         size_type w_max_value = m_weights[max_pos];
-        // coordinates
+//        coordinates
         size_type y_value = y_old + m_y_values[pos];
         size_type bp_close = m_tree.close(node);
         size_type x_value = bp_close - m_tree.preorder_rank(bp_close);
 
-        return {x_value, y_value, y_value, node, pos, w_value, w_max_value};
+        return {x_value, y_value, y_value, node, pos, 0, 0};
     }
 
     treap_node move_left(treap_node &node) const {
@@ -500,7 +502,7 @@ public:
 
         std::stack<std::pair<treap_node *, size_type> > st;
         m_root_data = get_data(1, 0);
-
+        set_weight_data(&m_root_data);
         size_t levels = 0;
         st.push({&m_root_data, levels});
         while (!st.empty()) {
@@ -513,14 +515,15 @@ public:
                 continue;
             } else {
                 treap_node next_node = move_left(*node);
+                set_weight_data(&next_node);
                 if (next_node.m_x_value != std::numeric_limits<size_t>::max()) {
-
                     node->m_left = new treap_node(next_node.m_x_value, next_node.m_y_value, next_node.m_y_value,
                             next_node.m_node, next_node.m_pos, next_node.m_weight, next_node.m_max_weight);
                     st.push({node->m_left, depth + 1});
                 }
-                next_node = move_right(*node);
 
+                next_node = move_right(*node);
+                set_weight_data(&next_node);
                 if (next_node.m_x_value != std::numeric_limits<size_t>::max()) {
                     node->m_right = new treap_node(next_node.m_x_value, next_node.m_y_value, next_node.m_y_value,
                             next_node.m_node, next_node.m_pos, next_node.m_weight, next_node.m_max_weight);

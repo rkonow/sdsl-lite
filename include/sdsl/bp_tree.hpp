@@ -22,6 +22,7 @@
 #define INCLUDED_SDSL_BP_TREE
 //#pragma once
 #include "bp_support.hpp"
+#include "bit_vectors.hpp"
 
 namespace sdsl {
 
