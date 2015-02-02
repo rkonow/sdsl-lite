@@ -116,6 +116,16 @@ public:
                 treap_node node = cand.top();
                 cand.pop();
                 if (node.m_y_value <= imag(m_p2)) {
+                    if (node.m_x_value >= real(m_p1) and node.m_x_value <= real(m_p2)) {
+                        res.push(node);
+                        if (cand.top().m_max_weight <= res.top().m_weight) {
+                            treap_node node = res.top();
+                            m_point_val = {{node.m_x_value, node.m_y_value}, node.m_weight};
+                            res.pop();
+                            m_valid = true;
+                            return *this;
+                        }
+                    }
                     if (node.m_x_value >= real(m_p1)) {
                         treap_node left = m_topk->move_left(node);
                         if (left.m_x_value != std::numeric_limits<size_type>::max()) {
@@ -126,16 +136,6 @@ public:
                         treap_node right = m_topk->move_right(node);
                         if (right.m_x_value != std::numeric_limits<size_type>::max()) {
                             cand.push(right);
-                        }
-                    }
-                    if (node.m_x_value >= real(m_p1) and node.m_x_value <= real(m_p2)) {
-                        res.push(node);
-                        if (cand.top().m_max_weight <= res.top().m_weight) {
-                            treap_node node = res.top();
-                            m_point_val = {{node.m_x_value, node.m_y_value}, node.m_weight};
-                            res.pop();
-                            m_valid = true;
-                            return *this;
                         }
                     }
                 }
@@ -176,6 +176,7 @@ public:
             size_type m_pos;
             size_type m_weight;
             size_type m_max_weight;
+            size_type m_level;
 
             node_ptr m_left;
             node_ptr m_right;
@@ -307,27 +308,52 @@ public:
         }
         // (2) traverse the trep with pointer in pre-order and save the y-dest values and weights
         {
-            std::stack<treap_node *> st;
+            std::stack<std::pair<treap_node *,size_t> > st;
             int_vector<> weights;
             size_type node_id = 0;
-
+            size_t max = 0;
+            size_t avg_sum = 0;
             load_from_file(weights, buf_w.filename());
             int_vector_buffer<> permuted_weights(temp_grid_w_filename, std::ios::out);
             int_vector_buffer<> permuted_y(temp_grid_y_filename, std::ios::out);
-
-            st.push(m_root);
+            m_root->m_level = 1;
+            st.push({m_root,1});
+            std::map<size_t, size_t> depths;
+            std::map<size_t, size_t> y_values;
+            size_t max_y = 0;
             while (!st.empty()) {
-                treap_node *tmp = st.top();
+                treap_node *tmp = st.top().first;
                 tmp->m_pos = node_id;
                 tmp->m_weight = weights[tmp->m_x_value];
+                tmp->m_level = st.top().second;
+                avg_sum += tmp->m_level;
+                depths[tmp->m_level]++;
+                y_values[tmp->m_y_value]++;
+                if (max < tmp->m_level)
+                    max = tmp->m_level;
+
+                if (max_y < tmp->m_y_value);
+                    max_y = tmp->m_y_value;
+
                 node_id++;
                 permuted_weights.push_back(tmp->m_weight);
                 permuted_y.push_back(tmp->m_y_value);
                 st.pop();
                 if (tmp->m_right != nullptr)
-                    st.push(tmp->m_right);
+                    st.push({tmp->m_right,tmp->m_level+1});
                 if (tmp->m_left != nullptr)
-                    st.push(tmp->m_left);
+                    st.push({tmp->m_left,tmp->m_level+1});
+            }
+            cout << "max_y = " << max_y << endl;
+            cout << "avg depth = " << avg_sum*1.0/weights.size()*1.0 << endl;
+            cout << "max depth = " << max << endl;
+            cout << "total = " << weights.size() << endl;
+            for (auto& x : depths) {
+                cout << x.first << " " << x.second << endl;
+            }
+            cout << "====" << endl;
+            for (auto& x : y_values) {
+                cout << x.first << " " << x.second << endl;
             }
         }
         // (3) load the weights and y-dest values into the class.
@@ -407,6 +433,9 @@ public:
         size_type pos = m_tree.preorder_rank(node) - 2;
         size_type left = pos;
         size_type rank_param = m_tree.close(m_tree.enclose(node));
+        // fwd_search(node,-2);
+        // fwd_searc(node,-1) (bp_close),
+        // otra vez, para rank_param;
         size_type right = m_tree.preorder_rank(rank_param) - 2;
         size_type max_pos = m_rmq(left, right);
         size_type w_value = m_weights[pos];
