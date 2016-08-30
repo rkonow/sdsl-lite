@@ -28,31 +28,51 @@
 
 #include "sdsl/vectors.hpp"
 #include "sdsl/wavelet_trees.hpp"
+#include "sdsl/wt_algorithm.hpp"
 #include "sdsl/rmq_support.hpp"
+#include "sdsl/wt_topk_algorithm.hpp"
 #include <iostream>
 #include <algorithm>
 #include <vector>
 #include <queue>
 #include <complex>
 
-using namespace std;
-using namespace sdsl;
-
 namespace sdsl
 {
 
+typedef std::complex<uint64_t> _point_type;
+typedef std::pair<_point_type, uint64_t> _point_val_type;
 
+
+template<bool t_perm_x>
+struct _permute {
+    template<typename t_wt, typename t_w, typename t_c, typename t_pos>
+    static _point_val_type x(const t_wt& wt, t_w weight, t_c c, t_pos cpos, t_pos cbegin)
+    {
+        return {{wt.select(cpos-cbegin+1, c)}, weight};
+    }
+};
+
+template<>
+struct _permute<true> {
+    template<typename t_wt, typename t_w, typename t_c, typename t_pos>
+    static _point_val_type x(const t_wt&, t_w weight, t_c c, t_pos cpos, t_pos)
+    {
+        return {{cpos, c}, weight};
+    }
+};
 
 template<typename t_wt=wt_int<>,
          typename t_rmq=rmq_succinct_sct<false>,
-         typename t_weight_vec=dac_vector<>
-         >
+         typename t_weight_vec=dac_vector<>,
+         bool t_perm_x=false>
+
 class wt_topk
 {
     public:
         typedef std::complex<uint64_t> point_type;
         typedef int_vector<>::size_type size_type;
-        typedef std::complex<uint64_t> range_type;
+        typedef sdsl::range_type        range_type;
 
         class top_k_iterator
         {
@@ -105,12 +125,12 @@ class wt_topk
                     m_valid = false;
                     if (!m_pq.empty()) {
                         auto s = m_pq.top();
-                        m_point_val = {{m_topk->m_wt.select(s[3]-s[5]+1, s[4]), s[4]}, s[0]};
+
+                        m_point_val = _permute<t_perm_x>::x(m_topk->m_wt, s[0], s[4], s[3], s[5]);
+
                         m_pq.pop();
                         push_node(s[1], s[3], s[4],s[5]);
-                        push_node(s[3]+1, s[2]+1, s[4],s[5]);
-                    }
-                    if (!m_pq.empty()) {
+                        push_node(s[3]+1, s[2]+1, s[4], s[5]);
                         m_valid = true;
                     }
                     return *this;
@@ -141,6 +161,8 @@ class wt_topk
         t_rmq               m_rmq;      // range maximum query structure on top of the weights
 
     public:
+        enum { permuted_x = t_perm_x };
+
         wt_topk() = default;
 
         wt_topk(const wt_topk& tr) = default;
@@ -168,8 +190,8 @@ class wt_topk
                 int_vector_buffer<>& buf_w)
         {
             std::string temp_file = buf_w.filename() +
-                                    + "_wt_topk_" + to_string(util::pid())
-                                    + "_" + to_string(util::id());
+                                    + "_wt_topk_" + std::to_string(util::pid())
+                                    + "_" + std::to_string(util::id());
             // (1) Calculate permuted weight vector
             {
                 int_vector<> perm = sorted_perm(buf_y);
@@ -225,13 +247,24 @@ class wt_topk
             m_weights.load(in);
         }
 
+        // Count how many points are in the rectangle (p1,p2)
+        /*! \param p1    Lower left corner of the rectangle.
+         *  \param p2    Upper right corner of the rectangle.
+         *  \return The number of points in rectangle (p1,p2).
+         *  \pre real(p1) <= real(p2) and imag(p1)<=imag(p2)
+         */
+        uint64_t count(point_type p1, point_type p2) const
+        {
+            const range_type x_r(real(p1), real(p2));
+            const range_type y_r(imag(p1), imag(p2));
+            return sdsl::count(m_wt, x_r, y_r);
+        }
+
         void print_info() const
         {
             std::cout<<"m_wt     ="<<m_wt<<std::endl;
             std::cout<<"m_weights="<<m_weights<<std::endl;
         }
-
-    private:
 
         //! Returns a permutation P which is stable sorted according to data_buf
         /*!

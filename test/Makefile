@@ -292,6 +292,17 @@ test_cases/int-vec-k2t.%: IntVectorGenerator.x
 	$(eval SEED:=$(call dim,4,$*))
 	@./IntVectorGenerator.x $@ $(LEN) $(WIDTH) $(DEFAULT) $(SEED)
 
+# Format: test_cases/int-vec-wtk.[LEN].[WIDTH].[DEFAULT].[SEED].[x|y|w]
+test_cases/int-vec-wtk.%: IntVectorGenerator.x
+	@echo "Generate input test_cases/int-vec-wtk.$*"
+	$(eval LEN:=$(call dim,1,$*))
+	$(eval WIDTH:=$(call dim,2,$*))
+	$(eval DEFAULT:=$(call dim,3,$*))
+	$(eval SEED:=$(call dim,4,$*))
+	@./IntVectorGenerator.x $@ $(LEN) $(WIDTH) $(DEFAULT) 
+
+
+
 test_cases/bit-vec.%: BitVectorGenerator.x
 	@echo "Generate input test_cases/bit-vec.$*"
 	@./BitVectorGenerator.x $@ $*
